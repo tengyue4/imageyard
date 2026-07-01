@@ -1,0 +1,61 @@
+name: Publish Multica Codex Runtime
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/publish-multica-runtime-codex.yml"
+      - "multica-runtime/codex.Dockerfile"
+      - "multica-runtime/codex-entrypoint.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: multica-runtime-codex
+  IMAGE_TAG: v0.3.29-codex-0.142.4-r2
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image coordinates
+        id: image
+        shell: bash
+        run: |
+          owner_lc="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "owner_lc=${owner_lc}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${owner_lc}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v6
+        with:
+          context: multica-runtime
+          file: multica-runtime/codex.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.image }}:${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.title=Multica Codex Runtime
+            org.opencontainers.image.description=Codex-first Multica daemon runtime image for Kubernetes-hosted agents
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.IMAGE_TAG }}

@@ -6,7 +6,7 @@ Centralized container image definitions, scoped CI build pipelines, and registry
 
 `imageyard` is the shared home for image-building work. It is intended to collect Dockerfiles, image-specific build assets, CI workflows, publishing rules, runbooks, and decision records for container images that are maintained together.
 
-This bootstrap pass adds repository documentation and contributor guidance only. It does not add image definitions, GitHub Actions workflows, registry publishing, tags, or migrations from other repositories.
+This repository now includes the Multica runtime image definitions and scoped publish workflows. Additional image projects can be added under their own directories as they are consolidated.
 
 ## Expected Structure
 
@@ -16,10 +16,9 @@ Suggested future layout:
 
 ```text
 imageyard/
-├── images/
-│   └── <image-name>/
 ├── .github/
 │   └── workflows/
+├── multica-runtime/
 ├── docs/
 │   ├── adr/
 │   ├── runbooks/
@@ -29,7 +28,24 @@ imageyard/
 └── CLAUDE.md -> AGENTS.md
 ```
 
-The exact layout should be documented when the first image contract is added.
+## Current Images
+
+### Multica Runtime
+
+The `multica-runtime/` directory contains two Kubernetes-oriented Multica daemon runtime images:
+
+- Codex runtime: `multica-runtime/codex.Dockerfile`
+  - Entrypoint: `multica-runtime/codex-entrypoint.sh`
+  - Published tag: `ghcr.io/<owner>/multica-runtime-codex:v0.3.29-codex-0.142.4-r2`
+- Claude runtime: `multica-runtime/claude.Dockerfile`
+  - Entrypoint: `multica-runtime/claude-entrypoint.sh`
+  - Published tag: `ghcr.io/<owner>/multica-runtime-claude:v0.3.29-claude-2.1.197-r2`
+
+Both workflows publish only explicit immutable tags. They do not publish a moving `latest` tag.
+
+## Scoped Publishing
+
+Each Multica runtime image has its own publish workflow. Workflows run on pushes to `main` only when that workflow or that image's Dockerfile/entrypoint changes, and they can also be run manually with `workflow_dispatch`.
 
 ## Contributor Guidance
 
