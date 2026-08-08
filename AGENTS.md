@@ -28,6 +28,7 @@ imageyard/
 ├── docs/
 │   ├── adr/
 │   ├── runbooks/
+│   │   └── multica-runtime-release.md
 │   └── changelog.md
 ├── README.md
 ├── AGENTS.md
@@ -40,23 +41,29 @@ imageyard/
 
 - Dockerfile: `multica-runtime/codex.Dockerfile`
 - Entrypoint: `multica-runtime/codex-entrypoint.sh`
-- Base image: `ghcr.io/multica-ai/multica-backend:v0.3.29`
-- Codex CLI package: `@openai/codex@0.142.4`
-- Canonical image tag: `v0.3.29-codex-0.142.4-r2`
-- Published image name: `ghcr.io/<owner>/multica-runtime-codex:v0.3.29-codex-0.142.4-r2`
+- Base image: `ghcr.io/multica-ai/multica-backend:v0.4.21`
+- Codex CLI package: `@openai/codex@0.147.0`
+- Build context: `multica-runtime`
+- Published platforms: `linux/amd64`, `linux/arm64`
+- Canonical image tag: `v0.4.21-codex-0.147.0-r1`
+- Published image name: `ghcr.io/tengyue4/multica-runtime-codex:v0.4.21-codex-0.147.0-r1`
+- Smoke tests: Multica/Codex versions, non-root user, Git/GitHub CLI/SSH/Node/npm/bubblewrap availability, daemon flags, and safe required-environment failures
 
 ### Multica Claude Runtime
 
 - Dockerfile: `multica-runtime/claude.Dockerfile`
 - Entrypoint: `multica-runtime/claude-entrypoint.sh`
-- Base image: `ghcr.io/multica-ai/multica-backend:v0.3.29`
-- Claude Code package: `@anthropic-ai/claude-code@2.1.197`
-- Canonical image tag: `v0.3.29-claude-2.1.197-r2`
-- Published image name: `ghcr.io/<owner>/multica-runtime-claude:v0.3.29-claude-2.1.197-r2`
+- Base image: `ghcr.io/multica-ai/multica-backend:v0.4.21`
+- Claude Code package: `@anthropic-ai/claude-code@2.1.220` from Anthropic's stable release channel
+- Build context: `multica-runtime`
+- Published platforms: `linux/amd64`, `linux/arm64`
+- Canonical image tag: `v0.4.21-claude-2.1.220-r1`
+- Published image name: `ghcr.io/tengyue4/multica-runtime-claude:v0.4.21-claude-2.1.220-r1`
+- Smoke tests: Multica/Claude versions, non-root user, Git/GitHub CLI/SSH/Node/npm/ripgrep availability, daemon flags, and safe required-environment failures
 
 The Multica runtime images must run as the non-root `multica` user and must not bake runtime secrets into the image. Runtime secrets belong in Kubernetes, Vault, or another runtime secret source.
 
-Each Multica runtime image has its own publish workflow. Multica runtime workflows trigger only when that workflow file or the corresponding runtime Dockerfile/entrypoint changes, or when manually dispatched.
+Each Multica runtime image has its own publish workflow. Multica runtime workflows trigger only when that workflow file or the corresponding runtime Dockerfile/entrypoint changes, or when manually dispatched. Publishes are serialized per image and must fail closed rather than overwrite an existing immutable tag.
 
 ## Required Git Workflow for All Changes
 

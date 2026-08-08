@@ -36,16 +36,24 @@ The `multica-runtime/` directory contains two Kubernetes-oriented Multica daemon
 
 - Codex runtime: `multica-runtime/codex.Dockerfile`
   - Entrypoint: `multica-runtime/codex-entrypoint.sh`
-  - Published tag: `ghcr.io/<owner>/multica-runtime-codex:v0.3.29-codex-0.142.4-r2`
+  - Base image: `ghcr.io/multica-ai/multica-backend:v0.4.21`
+  - Codex CLI: `@openai/codex@0.147.0`
+  - Published tag: `ghcr.io/tengyue4/multica-runtime-codex:v0.4.21-codex-0.147.0-r1`
 - Claude runtime: `multica-runtime/claude.Dockerfile`
   - Entrypoint: `multica-runtime/claude-entrypoint.sh`
-  - Published tag: `ghcr.io/<owner>/multica-runtime-claude:v0.3.29-claude-2.1.197-r2`
+  - Base image: `ghcr.io/multica-ai/multica-backend:v0.4.21`
+  - Claude Code: `@anthropic-ai/claude-code@2.1.220` from Anthropic's stable release channel
+  - Published tag: `ghcr.io/tengyue4/multica-runtime-claude:v0.4.21-claude-2.1.220-r1`
 
-Both workflows publish only explicit immutable tags. They do not publish a moving `latest` tag.
+Both images use the `multica-runtime` build context and publish for `linux/amd64` and `linux/arm64`. Release smoke tests verify the Multica/provider versions, non-root user, required tools, and safe missing-environment-variable failures.
+
+Both workflows publish only explicit immutable tags. They do not publish a moving `latest` tag, serialize publishes per image, and fail closed if the target tag already exists or its availability cannot be verified.
 
 ## Scoped Publishing
 
 Each Multica runtime image has its own publish workflow. Workflows run on pushes to `main` only when that workflow or that image's Dockerfile/entrypoint changes, and they can also be run manually with `workflow_dispatch`.
+
+See `docs/runbooks/multica-runtime-release.md` for version selection, local smoke tests, publication, manifest verification, and rollback guidance.
 
 ## Contributor Guidance
 

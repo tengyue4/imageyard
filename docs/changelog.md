@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-08 - Upgrade Multica Runtime Images
+
+- Upgraded both Multica runtime images from `v0.3.29` to `v0.4.21`.
+- Upgraded the Codex CLI from `0.142.4` to `0.147.0` and reset the immutable image revision to `v0.4.21-codex-0.147.0-r1`.
+- Upgraded Claude Code from `2.1.197` to Anthropic stable-channel version `2.1.220` and reset the immutable image revision to `v0.4.21-claude-2.1.220-r1`.
+- Added Anthropic's documented Alpine runtime dependencies for the native Claude Code package.
+- Serialized each image's publish jobs and added fail-closed checks that refuse to overwrite an existing immutable GHCR tag.
+- Documented repeatable local smoke tests, publishing, manifest verification, and rollback procedures.
+
 ## 2026-07-01 - Migrate Multica Runtime Images
 
 - Added the Multica Codex and Claude runtime image definitions under `multica-runtime/`.

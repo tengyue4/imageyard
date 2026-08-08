@@ -1,7 +1,7 @@
-ARG MULTICA_VERSION=v0.3.29
+ARG MULTICA_VERSION=v0.4.21
 FROM ghcr.io/multica-ai/multica-backend:${MULTICA_VERSION}
 
-ARG CODEX_VERSION=0.142.4
+ARG CODEX_VERSION=0.147.0
 
 LABEL org.opencontainers.image.title="Multica Codex Runtime"
 LABEL org.opencontainers.image.description="Codex-first Multica daemon runtime image for Kubernetes-hosted agents"
