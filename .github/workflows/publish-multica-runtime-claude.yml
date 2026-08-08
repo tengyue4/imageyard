@@ -14,9 +14,13 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: publish-multica-runtime-claude
+  cancel-in-progress: false
+
 env:
   IMAGE_NAME: multica-runtime-claude
-  IMAGE_TAG: v0.3.29-claude-2.1.197-r2
+  IMAGE_TAG: v0.4.21-claude-2.1.220-r1
 
 jobs:
   publish:
@@ -44,6 +48,31 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refuse an existing immutable tag
+        shell: bash
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+
+          inspect_log="$(mktemp)"
+          trap 'rm -f "$inspect_log"' EXIT
+
+          if docker buildx imagetools inspect "${IMAGE}:${IMAGE_TAG}" >"$inspect_log" 2>&1; then
+            cat "$inspect_log"
+            echo "::error title=Immutable image tag already exists::Refusing to overwrite ${IMAGE}:${IMAGE_TAG}"
+            exit 1
+          fi
+
+          if grep -Fxq "ERROR: ${IMAGE}:${IMAGE_TAG}: not found" "$inspect_log"; then
+            echo "Immutable tag is available: ${IMAGE}:${IMAGE_TAG}"
+            exit 0
+          fi
+
+          cat "$inspect_log" >&2
+          echo "::error title=Unable to verify image tag::Refusing to publish because ${IMAGE}:${IMAGE_TAG} availability could not be confirmed"
+          exit 1
 
       - name: Build and publish image
         uses: docker/build-push-action@v6
