@@ -46,7 +46,7 @@ imageyard/
 - Build context: `multica-runtime`
 - Published platforms: `linux/amd64`, `linux/arm64`
 - Canonical image tag: `v0.4.21-codex-0.147.0-r1`
-- Published image name: `ghcr.io/tengyue4/multica-runtime-codex:v0.4.21-codex-0.147.0-r1`
+- Published image name: `ghcr.io/ytbits/multica-runtime-codex:v0.4.21-codex-0.147.0-r1`
 - Smoke tests: Multica/Codex versions, non-root user, Git/GitHub CLI/SSH/Node/npm/bubblewrap availability, daemon flags, and safe required-environment failures
 
 ### Multica Claude Runtime
@@ -58,7 +58,7 @@ imageyard/
 - Build context: `multica-runtime`
 - Published platforms: `linux/amd64`, `linux/arm64`
 - Canonical image tag: `v0.4.21-claude-2.1.220-r1`
-- Published image name: `ghcr.io/tengyue4/multica-runtime-claude:v0.4.21-claude-2.1.220-r1`
+- Published image name: `ghcr.io/ytbits/multica-runtime-claude:v0.4.21-claude-2.1.220-r1`
 - Smoke tests: Multica/Claude versions, non-root user, Git/GitHub CLI/SSH/Node/npm/ripgrep availability, daemon flags, and safe required-environment failures
 
 The Multica runtime images must run as the non-root `multica` user and must not bake runtime secrets into the image. Runtime secrets belong in Kubernetes, Vault, or another runtime secret source.
