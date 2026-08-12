@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-08-11 - Update GitHub Image Ownership References
+
+- Updated current Multica runtime GHCR coordinates and OCI source labels from the former GitHub owner to `ytbits`.
+- Left the owner-derived publishing workflows and immutable image tags unchanged.
+
 ## 2026-08-08 - Upgrade Multica Runtime Images
 
 - Upgraded both Multica runtime images from `v0.3.29` to `v0.4.21`.

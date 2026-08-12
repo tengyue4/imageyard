@@ -38,12 +38,12 @@ The `multica-runtime/` directory contains two Kubernetes-oriented Multica daemon
   - Entrypoint: `multica-runtime/codex-entrypoint.sh`
   - Base image: `ghcr.io/multica-ai/multica-backend:v0.4.21`
   - Codex CLI: `@openai/codex@0.147.0`
-  - Published tag: `ghcr.io/tengyue4/multica-runtime-codex:v0.4.21-codex-0.147.0-r1`
+  - Published tag: `ghcr.io/ytbits/multica-runtime-codex:v0.4.21-codex-0.147.0-r1`
 - Claude runtime: `multica-runtime/claude.Dockerfile`
   - Entrypoint: `multica-runtime/claude-entrypoint.sh`
   - Base image: `ghcr.io/multica-ai/multica-backend:v0.4.21`
   - Claude Code: `@anthropic-ai/claude-code@2.1.220` from Anthropic's stable release channel
-  - Published tag: `ghcr.io/tengyue4/multica-runtime-claude:v0.4.21-claude-2.1.220-r1`
+  - Published tag: `ghcr.io/ytbits/multica-runtime-claude:v0.4.21-claude-2.1.220-r1`
 
 Both images use the `multica-runtime` build context and publish for `linux/amd64` and `linux/arm64`. Release smoke tests verify the Multica/provider versions, non-root user, required tools, and safe missing-environment-variable failures.
 

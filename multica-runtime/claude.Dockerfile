@@ -5,7 +5,7 @@ ARG CLAUDE_CODE_VERSION=2.1.220
 
 LABEL org.opencontainers.image.title="Multica Claude Runtime"
 LABEL org.opencontainers.image.description="Claude Code-first Multica daemon runtime image for Kubernetes-hosted agents"
-LABEL org.opencontainers.image.source="https://github.com/tengyue4/imageyard"
+LABEL org.opencontainers.image.source="https://github.com/ytbits/imageyard"
 
 RUN apk add --no-cache \
     bash \
