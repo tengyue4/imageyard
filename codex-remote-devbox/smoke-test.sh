@@ -23,6 +23,11 @@ fail() {
 }
 
 cleanup() {
+  local original_status=$?
+
+  trap - EXIT INT TERM
+  set +e
+
   if [ -n "$forward_pid" ]; then
     kill "$forward_pid" >/dev/null 2>&1 || true
     wait "$forward_pid" >/dev/null 2>&1 || true
@@ -38,9 +43,33 @@ cleanup() {
     "$private_access_container" \
     "$invalid_host_container" \
     >/dev/null 2>&1 || true
-  rm -rf "$fixture_dir"
+
+  # SSH sessions create UID 1000-owned state below the bind-mounted fixtures.
+  # Remove it as container root before the unprivileged CI runner removes the
+  # fixture root. The helper has no network, mounts only the exact directory
+  # returned by mktemp, and cannot cross onto another filesystem.
+  if [ -d "$fixture_dir" ] \
+    && docker image inspect "$image" >/dev/null 2>&1; then
+    docker run --rm \
+      --network none \
+      --user 0:0 \
+      --entrypoint /bin/sh \
+      --mount "type=bind,src=$fixture_dir,dst=/cleanup" \
+      "$image" \
+      -c 'find /cleanup -xdev -depth -mindepth 1 -delete' \
+      >/dev/null 2>&1 || true
+  fi
+  rmdir -- "$fixture_dir" >/dev/null 2>&1 || true
+  if [ -e "$fixture_dir" ]; then
+    printf 'smoke-test: warning: could not remove fixture directory: %s\n' \
+      "$fixture_dir" >&2
+  fi
+
+  exit "$original_status"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 for command_name in docker ssh ssh-keygen ssh-keyscan; do
   command -v "$command_name" >/dev/null 2>&1 \
