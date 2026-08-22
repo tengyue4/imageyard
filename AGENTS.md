@@ -10,7 +10,7 @@ Centralized repository for container image definitions, CI build pipelines, and 
 
 This repository is dedicated to image-building work across container images maintained together. It should collect image definitions, image-specific build assets, scoped CI workflows, publishing automation, runbooks, and decision records.
 
-The repository currently hosts Multica runtime image definitions and publish workflows. Additional image projects should be added under their own clearly named directories as they are consolidated.
+The repository currently hosts the Codex remote devbox and Multica runtime image definitions with scoped validation and publish workflows. Additional image projects should be added under their own clearly named directories as they are consolidated.
 
 ## Current Repository Structure
 
@@ -18,8 +18,16 @@ The repository currently hosts Multica runtime image definitions and publish wor
 imageyard/
 ├── .github/
 │   └── workflows/
+│       ├── publish-codex-remote-devbox.yml
 │       ├── publish-multica-runtime-claude.yml
-│       └── publish-multica-runtime-codex.yml
+│       ├── publish-multica-runtime-codex.yml
+│       └── validate-codex-remote-devbox.yml
+├── codex-remote-devbox/
+│   ├── .dockerignore
+│   ├── Dockerfile
+│   ├── entrypoint.sh
+│   ├── smoke-test.sh
+│   └── sshd_config
 ├── multica-runtime/
 │   ├── claude.Dockerfile
 │   ├── claude-entrypoint.sh
@@ -27,7 +35,9 @@ imageyard/
 │   └── codex-entrypoint.sh
 ├── docs/
 │   ├── adr/
+│   │   └── 0001-codex-remote-devbox-contract.md
 │   ├── runbooks/
+│   │   ├── codex-remote-devbox-release.md
 │   │   └── multica-runtime-release.md
 │   └── changelog.md
 ├── README.md
@@ -36,6 +46,32 @@ imageyard/
 ```
 
 ## Current Image Contracts
+
+### Codex Remote Devbox
+
+- Directory and build context: `codex-remote-devbox/`
+- Dockerfile: `codex-remote-devbox/Dockerfile`
+- Base image: `node:24.19.0-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03`
+- Codex CLI package: `@openai/codex@0.149.0`
+- Published platforms: `linux/amd64`, `linux/arm64`
+- Canonical tag: `codex-0.149.0-r1`
+- Published image: `ghcr.io/ytbits/codex-remote-devbox:codex-0.149.0-r1`
+- SSH interface: TCP `2222`, public-key-only login as `codex` UID/GID `1000` with Bash
+- State paths: `/home/codex` and `/workspaces`
+- Authorized keys: `/run/secrets/ssh-access/authorized_keys`
+- Ed25519 host key: `/run/secrets/ssh-host/ssh_host_ed25519_key`
+- Startup: root `tini` to foreground OpenSSH; authenticated sessions run as `codex`
+- Smoke tests: both architectures, positive and negative SSH authentication, user and sudo contract, tool boundaries, Codex app-server command availability, stable host identity, persistence, listener checks, and secret absence
+
+The authorized-keys input accepts bare OpenSSH public-key lines only; per-key options are not part of the image contract. The Codex remote devbox is a trusted, single-user development image. It grants `codex` full passwordless sudo as an explicit exception, but it must not require privileged mode, a Docker socket, or broad host-filesystem access beyond the documented key and state mounts. It includes a lean Node, Python, Git, GitHub CLI, SSH, and build toolset and excludes Docker, Kubernetes and infrastructure CLIs, `nvm`, and `pyenv`.
+
+The image must fail closed when either runtime SSH key is missing, empty, invalid, or unsafe. It must never generate an ephemeral host identity, print key material, or bake Codex, GitHub, API, SSH, or user credentials into an image layer, build argument, label, or test fixture. Interactive authentication is performed after connection, and persistent user state is an external runtime concern.
+
+Codex Desktop starts the remote app server through SSH. The image must expose only SSH, must not prestart or publish an app-server listener, and must keep the remote login shell's `PATH` free of noisy interactive-only setup.
+
+Codex remote devbox tags use `codex-<CODEX_VERSION>-r<REVISION>`. Reset to `r1` when Codex changes; increment the revision for packaging changes at the same Codex version. Never publish or overwrite a moving tag. Base-image and system-package versions belong in the Dockerfile, OCI labels, and documentation, not in the tag.
+
+Validation and publication remain separate. The validation workflow has read-only repository permissions and builds and smoke-tests both target platforms. The publish workflow is limited to image-producing changes on `main` or manual dispatches targeting `main`, owns the GHCR write permission, and checks the exact immutable tag before building and again immediately before pushing. Registry authentication, network, or ambiguous-not-found failures must stop publication.
 
 ### Multica Codex Runtime
 
