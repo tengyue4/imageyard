@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-22 - Add Codex Remote Devbox Image
+
+- Added the `codex-remote-devbox` SSH image for Codex Desktop remote connections, based on the digest-pinned Node 24 Bookworm image with Codex CLI `0.149.0`.
+- Defined the stable port, user, filesystem, runtime key-file, tool, sudo, and credential boundaries without coupling the public image to a deployment platform.
+- Added separate validation and publish workflows with amd64/arm64 smoke tests, immutable fail-closed GHCR checks, and no moving tags.
+- Established `ghcr.io/ytbits/codex-remote-devbox:codex-0.149.0-r1` as the initial immutable release.
+- Added an architecture decision record and release runbook covering the image contract, local and Codex Desktop validation, publishing, digest verification, and rollback.
+
 ## 2026-08-11 - Update GitHub Image Ownership References
 
 - Updated current Multica runtime GHCR coordinates and OCI source labels from the former GitHub owner to `ytbits`.

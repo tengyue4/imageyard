@@ -1,0 +1,223 @@
+name: Validate Codex Remote Devbox
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/validate-codex-remote-devbox.yml"
+      - ".github/workflows/publish-codex-remote-devbox.yml"
+      - "codex-remote-devbox/**"
+      - "README.md"
+      - "AGENTS.md"
+      - "docs/changelog.md"
+      - "docs/adr/README.md"
+      - "docs/adr/0001-codex-remote-devbox-contract.md"
+      - "docs/runbooks/README.md"
+      - "docs/runbooks/codex-remote-devbox-release.md"
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_CODEX_VERSION: 0.149.0
+  EXPECTED_IMAGE_TAG: codex-0.149.0-r1
+  EXPECTED_NODE_VERSION: 24.19.0
+  EXPECTED_BASE_IMAGE: node:24.19.0-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03
+  EXPECTED_BASE_IMAGE_NAME: docker.io/library/node:24.19.0-bookworm-slim
+  EXPECTED_BASE_IMAGE_DIGEST: sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03
+
+jobs:
+  static-checks:
+    name: Static checks
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check shell syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          sh -n codex-remote-devbox/entrypoint.sh
+          bash -n codex-remote-devbox/smoke-test.sh
+          git diff --check HEAD^ HEAD
+
+      - name: Check workflow YAML syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby -e 'require "yaml"; ARGV.each { |path| YAML.parse_file(path) or abort("empty YAML: #{path}") }' \
+            .github/workflows/validate-codex-remote-devbox.yml \
+            .github/workflows/publish-codex-remote-devbox.yml
+
+      - name: Check Codex version and release tag consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          dockerfile_version="$(
+            sed -nE \
+              -e 's/^(ARG|ENV)[[:space:]]+CODEX_VERSION[=[:space:]]+"?([0-9]+\.[0-9]+\.[0-9]+)"?.*$/\2/p' \
+              -e 's/.*@openai\/codex@([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' \
+              codex-remote-devbox/Dockerfile | sort -u
+          )"
+          dockerfile_image_tag="$(
+            sed -nE 's/^(ARG|ENV)[[:space:]]+IMAGE_VERSION[=[:space:]]+"?([^"[:space:]]+)"?[[:space:]]*$/\2/p' \
+              codex-remote-devbox/Dockerfile
+          )"
+          publish_tag="$(
+            sed -nE 's/^[[:space:]]+IMAGE_TAG:[[:space:]]+([^[:space:]]+)[[:space:]]*$/\1/p' \
+              .github/workflows/publish-codex-remote-devbox.yml
+          )"
+          publish_codex_version="$(
+            sed -nE 's/^[[:space:]]+CODEX_VERSION:[[:space:]]+([^[:space:]]+)[[:space:]]*$/\1/p' \
+              .github/workflows/publish-codex-remote-devbox.yml
+          )"
+          smoke_codex_version="$(
+            sed -nE 's/^expected_codex_version="\$\{EXPECTED_CODEX_VERSION:-([0-9]+\.[0-9]+\.[0-9]+)\}"$/\1/p' \
+              codex-remote-devbox/smoke-test.sh
+          )"
+          dockerfile_base_image="$(
+            sed -nE 's/^FROM[[:space:]]+([^[:space:]]+).*$/\1/p' \
+              codex-remote-devbox/Dockerfile
+          )"
+          dockerfile_base_name="$(
+            sed -nE 's/.*org\.opencontainers\.image\.base\.name="([^"]+)".*/\1/p' \
+              codex-remote-devbox/Dockerfile
+          )"
+          dockerfile_base_digest="$(
+            sed -nE 's/.*org\.opencontainers\.image\.base\.digest="([^"]+)".*/\1/p' \
+              codex-remote-devbox/Dockerfile
+          )"
+          dockerfile_node_version="$(
+            sed -nE 's/.*io\.imageyard\.node\.version="([^"]+)".*/\1/p' \
+              codex-remote-devbox/Dockerfile
+          )"
+          publish_base_name="$(
+            sed -nE 's/^[[:space:]]+BASE_IMAGE_NAME:[[:space:]]+([^[:space:]]+)[[:space:]]*$/\1/p' \
+              .github/workflows/publish-codex-remote-devbox.yml
+          )"
+          publish_base_digest="$(
+            sed -nE 's/^[[:space:]]+BASE_IMAGE_DIGEST:[[:space:]]+([^[:space:]]+)[[:space:]]*$/\1/p' \
+              .github/workflows/publish-codex-remote-devbox.yml
+          )"
+
+          if [[ "$dockerfile_version" != "$EXPECTED_CODEX_VERSION" ]]; then
+            echo "::error title=Codex version mismatch::Dockerfile pin '${dockerfile_version}' does not match ${EXPECTED_CODEX_VERSION}"
+            exit 1
+          fi
+          if [[ "$publish_tag" != "$EXPECTED_IMAGE_TAG" ]]; then
+            echo "::error title=Image tag mismatch::Publish tag '${publish_tag}' does not match ${EXPECTED_IMAGE_TAG}"
+            exit 1
+          fi
+          if [[ "$dockerfile_image_tag" != "$EXPECTED_IMAGE_TAG" ]]; then
+            echo "::error title=Dockerfile image version mismatch::Dockerfile image version '${dockerfile_image_tag}' does not match ${EXPECTED_IMAGE_TAG}"
+            exit 1
+          fi
+          if [[ "$publish_codex_version" != "$EXPECTED_CODEX_VERSION" ]]; then
+            echo "::error title=OCI label version mismatch::Publish metadata version '${publish_codex_version}' does not match ${EXPECTED_CODEX_VERSION}"
+            exit 1
+          fi
+          if [[ "$smoke_codex_version" != "$EXPECTED_CODEX_VERSION" ]]; then
+            echo "::error title=Smoke-test version mismatch::Smoke-test default '${smoke_codex_version}' does not match ${EXPECTED_CODEX_VERSION}"
+            exit 1
+          fi
+          if [[ "$dockerfile_base_image" != "$EXPECTED_BASE_IMAGE" ]]; then
+            echo "::error title=Base image mismatch::Dockerfile base '${dockerfile_base_image}' does not match ${EXPECTED_BASE_IMAGE}"
+            exit 1
+          fi
+          if [[ "$dockerfile_base_name" != "$EXPECTED_BASE_IMAGE_NAME" || "$publish_base_name" != "$EXPECTED_BASE_IMAGE_NAME" ]]; then
+            echo "::error title=Base image metadata mismatch::Dockerfile and publish metadata must match ${EXPECTED_BASE_IMAGE_NAME}"
+            exit 1
+          fi
+          if [[ "$dockerfile_base_digest" != "$EXPECTED_BASE_IMAGE_DIGEST" || "$publish_base_digest" != "$EXPECTED_BASE_IMAGE_DIGEST" ]]; then
+            echo "::error title=Base digest metadata mismatch::Dockerfile and publish metadata must match ${EXPECTED_BASE_IMAGE_DIGEST}"
+            exit 1
+          fi
+          if [[ "$dockerfile_node_version" != "$EXPECTED_NODE_VERSION" ]]; then
+            echo "::error title=Node version metadata mismatch::Dockerfile Node metadata '${dockerfile_node_version}' does not match ${EXPECTED_NODE_VERSION}"
+            exit 1
+          fi
+
+      - name: Run actionlint
+        shell: bash
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -euo pipefail
+
+          tool_dir="$(mktemp -d)"
+          trap 'rm -rf "$tool_dir"' EXIT
+          archive="$tool_dir/actionlint.tar.gz"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            --output "$archive"
+          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$archive" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$tool_dir" actionlint
+          "$tool_dir/actionlint" \
+            .github/workflows/validate-codex-remote-devbox.yml \
+            .github/workflows/publish-codex-remote-devbox.yml
+
+  build-and-smoke:
+    name: Build and smoke (${{ matrix.platform }})
+    needs: static-checks
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and load image
+        uses: docker/build-push-action@v6
+        with:
+          context: codex-remote-devbox
+          file: codex-remote-devbox/Dockerfile
+          platforms: ${{ matrix.platform }}
+          load: true
+          push: false
+          tags: imageyard/codex-remote-devbox:validation-${{ matrix.arch }}
+          cache-from: type=gha,scope=codex-remote-devbox-validation-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=codex-remote-devbox-validation-${{ matrix.arch }}
+
+      - name: Validate OpenSSH configuration
+        shell: bash
+        env:
+          DOCKER_DEFAULT_PLATFORM: ${{ matrix.platform }}
+          IMAGE: imageyard/codex-remote-devbox:validation-${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+
+          fixture_dir="$(mktemp -d)"
+          trap 'rm -rf "$fixture_dir"' EXIT
+          ssh-keygen -q -t ed25519 -N "" -f "$fixture_dir/ssh_host_ed25519_key"
+
+          docker run --rm \
+            --entrypoint /usr/sbin/sshd \
+            --mount "type=bind,src=$fixture_dir,dst=/run/codex-remote-devbox,readonly" \
+            "$IMAGE" \
+            -t -f /etc/ssh/sshd_config
+
+      - name: Run smoke tests
+        shell: bash
+        env:
+          DOCKER_DEFAULT_PLATFORM: ${{ matrix.platform }}
+          IMAGE: imageyard/codex-remote-devbox:validation-${{ matrix.arch }}
+        run: codex-remote-devbox/smoke-test.sh "$IMAGE"
