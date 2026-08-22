@@ -6,6 +6,8 @@ host_key_source=/run/secrets/ssh-host/ssh_host_ed25519_key
 runtime_dir=/run/codex-remote-devbox
 authorized_keys_runtime="$runtime_dir/authorized_keys"
 host_key_runtime="$runtime_dir/ssh_host_ed25519_key"
+authorized_keys_validation="$runtime_dir/authorized_keys.validation"
+authorized_key_validation="$runtime_dir/authorized_key.validation"
 
 fail() {
   printf '%s\n' "codex-remote-devbox: $*" >&2
@@ -24,17 +26,29 @@ install -d -o root -g root -m 0755 /run/sshd
 install -d -o root -g root -m 0755 "$runtime_dir"
 install -o root -g root -m 0644 "$authorized_keys_source" "$authorized_keys_runtime"
 install -o root -g root -m 0600 "$host_key_source" "$host_key_runtime"
+install -o root -g root -m 0600 /dev/null "$authorized_keys_validation"
+install -o root -g root -m 0600 /dev/null "$authorized_key_validation"
 
-awk '
+if ! awk '
   /^[[:space:]]*($|#)/ { next }
   $1 ~ /^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com)$/ &&
-    $2 ~ /^[A-Za-z0-9+\/=]+$/ { valid_keys++; next }
+    $2 ~ /^[A-Za-z0-9+\/=]+$/ {
+      print $1 " " $2
+      valid_keys++
+      next
+    }
   { exit 1 }
   END { if (valid_keys == 0) exit 1 }
-' "$authorized_keys_runtime" \
-  || fail "authorized_keys must contain only bare OpenSSH public keys"
-ssh-keygen -l -f "$authorized_keys_runtime" >/dev/null 2>&1 \
-  || fail "authorized_keys contains invalid public key data"
+' "$authorized_keys_runtime" > "$authorized_keys_validation"; then
+  fail "authorized_keys must contain only bare OpenSSH public keys"
+fi
+
+while IFS= read -r authorized_key; do
+  printf '%s\n' "$authorized_key" > "$authorized_key_validation"
+  ssh-keygen -l -f "$authorized_key_validation" >/dev/null 2>&1 \
+    || fail "authorized_keys contains invalid public key data"
+done < "$authorized_keys_validation"
+rm -f "$authorized_keys_validation" "$authorized_key_validation"
 
 host_key_type="$(ssh-keygen -y -f "$host_key_runtime" 2>/dev/null | awk 'NR == 1 { print $1 }')"
 [ "$host_key_type" = ssh-ed25519 ] \

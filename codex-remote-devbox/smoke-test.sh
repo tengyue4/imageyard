@@ -13,6 +13,7 @@ missing_access_container="${name_prefix}-missing-access"
 missing_host_container="${name_prefix}-missing-host"
 empty_access_container="${name_prefix}-empty-access"
 invalid_access_container="${name_prefix}-invalid-access"
+mixed_invalid_access_container="${name_prefix}-mixed-invalid-access"
 private_access_container="${name_prefix}-private-access"
 invalid_host_container="${name_prefix}-invalid-host"
 forward_pid=""
@@ -40,6 +41,7 @@ cleanup() {
     "$missing_host_container" \
     "$empty_access_container" \
     "$invalid_access_container" \
+    "$mixed_invalid_access_container" \
     "$private_access_container" \
     "$invalid_host_container" \
     >/dev/null 2>&1 || true
@@ -94,6 +96,9 @@ chmod 0400 "$fixture_dir/client_key" "$fixture_dir/unknown_key" "$fixture_dir/ho
 chmod 0444 "$fixture_dir/access/authorized_keys"
 : > "$fixture_dir/empty_authorized_keys"
 printf '%s\n' 'not-an-authorized-key' > "$fixture_dir/invalid_authorized_keys"
+cp "$fixture_dir/client_key.pub" "$fixture_dir/mixed_invalid_authorized_keys"
+printf 'ssh-ed25519 AAAA %s\n' "$secret_marker" \
+  >> "$fixture_dir/mixed_invalid_authorized_keys"
 printf '%s\n' 'not-a-private-key' > "$fixture_dir/invalid_host_key"
 
 start_container() {
@@ -390,6 +395,9 @@ expect_start_failure "$empty_access_container" "$fixture_dir/empty-access.log" \
   --mount "type=bind,src=$fixture_dir/host/ssh_host_ed25519_key,dst=/run/secrets/ssh-host/ssh_host_ed25519_key,readonly"
 expect_start_failure "$invalid_access_container" "$fixture_dir/invalid-access.log" \
   --mount "type=bind,src=$fixture_dir/invalid_authorized_keys,dst=/run/secrets/ssh-access/authorized_keys,readonly" \
+  --mount "type=bind,src=$fixture_dir/host/ssh_host_ed25519_key,dst=/run/secrets/ssh-host/ssh_host_ed25519_key,readonly"
+expect_start_failure "$mixed_invalid_access_container" "$fixture_dir/mixed-invalid-access.log" \
+  --mount "type=bind,src=$fixture_dir/mixed_invalid_authorized_keys,dst=/run/secrets/ssh-access/authorized_keys,readonly" \
   --mount "type=bind,src=$fixture_dir/host/ssh_host_ed25519_key,dst=/run/secrets/ssh-host/ssh_host_ed25519_key,readonly"
 expect_start_failure "$private_access_container" "$fixture_dir/private-access.log" \
   --mount "type=bind,src=$fixture_dir/client_key,dst=/run/secrets/ssh-access/authorized_keys,readonly" \
